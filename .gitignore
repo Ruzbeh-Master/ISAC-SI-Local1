@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env
+
+# Streamlit secrets
+modules/.streamlit/secrets.toml
+
+# OS files
+.DS_Store
+Thumbs.db
