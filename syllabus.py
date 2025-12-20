@@ -42,4 +42,5 @@ ISAC_CURRICULUM = {
         "context": "Analysis of comparison-based sorting algorithms. Detailed study of MergeSort and QuickSort, focusing on divide-and-conquer principles and complexity. Discussion of algorithm stability and in-place vs. out-of-place sorting.",
         "quiz_focus": "Tracing the partitioning process of QuickSort (selecting a pivot). Deriving the recurrence relation for MergeSort and confirming its O(n log n) complexity."
     }
-}
+    # test
+    }
