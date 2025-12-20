@@ -6,27 +6,23 @@ from modules.knowledge_base import DEFAULT_KNOWLEDGE_BASE
 
 DB_FILE = "isac_database.json"
 
-# Default DB with correct structure
 DEFAULT_DB = {
     "students": [
          {
              "name": "Student A", 
              "email": "student@mrdinstitute.com",
-             "bio": "Engineering student passionate about EVs.",
-             "lci": {
-                 "overallScore": 0.5,
-                 "tier": "Medium",
-                 "accuracy": 0.5,
-                 "confidence": 0.5
-             }, 
+             "bio": "Engineering student.",
+             "lci": {"overallScore": 0.5, "tier": "Medium", "accuracy": 0.5, "confidence": 0.5}, 
              "tier": "Medium", 
              "assignments": [], 
-             "progress": {}, # Format: {"week_1": 85, "week_2": 90}
-             "notifications": []
+             "progress": {},
+             "notifications": [],
+             "skills": {}
          }
     ],
     "syllabus_docs": [],
-    "syllabus_chapters": [] 
+    "syllabus_chapters": [],
+    "chat_logs": {} # NEW: Stores chats by user_email
 }
 
 def init_db():
@@ -39,23 +35,12 @@ def init_db():
         except:
             data = DEFAULT_DB
             
-    # --- SELF-HEALING: Fix LCI Format ---
-    for s in data['students']:
-        # If LCI is a number (old format), convert to object
-        if isinstance(s.get('lci'), (float, int)):
-            old_score = float(s['lci'])
-            s['lci'] = {
-                "overallScore": old_score,
-                "tier": s.get('tier', "Medium"),
-                "accuracy": old_score, 
-                "confidence": old_score
-            }
-            
-    # --- SEED DATA: Load Full Knowledge Base ---
+    # Self-Healing & Seeding
     if not data.get('syllabus_chapters'):
         data['syllabus_chapters'] = DEFAULT_KNOWLEDGE_BASE
+    if 'chat_logs' not in data:
+        data['chat_logs'] = {}
         
-    # Save repairs/seeds
     save_db(data)
     return data
 
@@ -63,19 +48,52 @@ def save_db(data):
     with open(DB_FILE, 'w') as f:
         json.dump(data, f, indent=4)
 
+# --- CHAT PERSISTENCE ---
+def save_chat_session(user_email, session_data):
+    """Saves a user's chat history to the DB."""
+    db = init_db()
+    if 'chat_logs' not in db: db['chat_logs'] = {}
+    
+    # Use email as key
+    db['chat_logs'][user_email] = session_data
+    save_db(db)
+
+def load_chat_session(user_email):
+    """Loads chat history for a user."""
+    db = init_db()
+    return db.get('chat_logs', {}).get(user_email, [{"id": "1", "title": "New Session", "msgs": []}])
+
+# --- EXPORT DATA ---
+def get_student_dataframe():
+    """Returns a Pandas DataFrame of all students for exporting."""
+    import pandas as pd
+    db = init_db()
+    
+    export_data = []
+    for s in db['students']:
+        row = {
+            "Name": s['name'],
+            "Email": s.get('email', 'N/A'),
+            "Tier": s.get('tier', 'Medium'),
+            "LCI Score": s.get('lci', {}).get('overallScore', 0),
+            "Modules Completed": len(s.get('progress', {})),
+            "Risk Factor": "High" if s.get('lci', {}).get('overallScore', 0) < 0.4 else "Stable"
+        }
+        export_data.append(row)
+    
+    return pd.DataFrame(export_data)
+
+# ... (Keep existing functions: update_student_profile, save_syllabus_document, etc.) ...
 def update_student_profile(email, name, bio, password):
     db = init_db()
     for s in db['students']:
-        if s.get('email', '').lower() == email.lower() or s['name'] == email: # Fallback for old names
+        if s.get('email', '').lower() == email.lower() or s['name'] == email:
             s['name'] = name
             s['bio'] = bio
-            if password: s['password'] = password # In real app, hash this!
+            if password: s['password'] = password
             break
     save_db(db)
-    return True
 
-# ... (Keep save_syllabus_document, get_all_documents, delete_document, save_parsed_chapters, assign_module_to_student from previous steps) ...
-# Ensure you copy them here or keep them if you are editing the file.
 def save_syllabus_document(file_obj, uploaded_by="Director"):
     db = init_db()
     file_bytes = file_obj.getvalue()
